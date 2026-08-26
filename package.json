@@ -29,7 +29,7 @@
     "author": "CyberBOT",
     "license": "MIT",
     "engines": {
-        "node": ">=22.0.0"
+        "node": "22.x"
     },
     "devDependencies": {
         "@types/express": "^5.0.6",

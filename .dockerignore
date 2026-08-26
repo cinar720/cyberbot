@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+.git
+*.md
+docker-compose*.yml
+.vscode
+.idea
+coverage
+.nyc_output

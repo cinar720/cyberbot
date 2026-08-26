@@ -1,0 +1,86 @@
+﻿src/cache/index.ts(1,1): error TS6192: All imports in import declaration are unused.
+src/commands/information/botinfo.ts(6,10): error TS2305: Module '"../../utils/helpers.js"' has no exported member 'formatNumber'.
+src/commands/information/serverinfo.ts(3,10): error TS2305: Module '"../../utils/helpers.js"' has no exported member 'formatNumber'.
+src/commands/information/serverinfo.ts(35,21): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/commands/information/userinfo.ts(1,31): error TS6133: 'GuildMember' is declared but its value is never read.
+src/commands/information/userinfo.ts(3,10): error TS2305: Module '"../../utils/helpers.js"' has no exported member 'formatNumber'.
+src/commands/information/userinfo.ts(3,10): error TS6133: 'formatNumber' is declared but its value is never read.
+src/commands/utility/help.ts(5,15): error TS6196: 'ChatInputCommandInteraction' is declared but never used.
+src/config/index.ts(2,18): error TS2305: Module '"./colors"' has no exported member 'embedColors'.
+src/events/guildMemberAdd.ts(27,29): error TS2339: Property 'wave' does not exist on type '{ readonly success: "<:basari:1532252612059992124>"; readonly error: "<:hata:1532253133760364716>"; readonly warning: "<:uyari:1532254121824882728>"; readonly info: "<:info:1532252139769036914>"; ... 37 more ...; readonly dog: "<:dog:1532272056933154836>"; }'.
+src/events/guildMemberRemove.ts(23,29): error TS2339: Property 'wave' does not exist on type '{ readonly success: "<:basari:1532252612059992124>"; readonly error: "<:hata:1532253133760364716>"; readonly warning: "<:uyari:1532254121824882728>"; readonly info: "<:info:1532252139769036914>"; ... 37 more ...; readonly dog: "<:dog:1532272056933154836>"; }'.
+src/events/interactionCreate.ts(2,31): error TS6196: 'SlashCommand' is declared but never used.
+src/events/interactionCreate.ts(70,50): error TS2740: Type 'Map<any, any>' is missing the following properties from type 'Collection<string, number>': ensure, hasAll, hasAny, first, and 31 more.
+src/events/messageCreate.ts(32,35): error TS2740: Type 'Map<any, any>' is missing the following properties from type 'Collection<string, number>': ensure, hasAll, hasAny, first, and 31 more.
+src/events/messageCreate.ts(47,48): error TS2353: Object literal may only specify known properties, and 'ephemeral' does not exist in type 'MessagePayload | MessageReplyOptions'.
+src/events/messageCreate.ts(55,47): error TS2339: Property 'checkCommandPermissions' does not exist on type 'typeof PermissionManager'.
+src/handlers/index.ts(8,34): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
+src/handlers/index.ts(23,16): error TS2322: Type 'string' is not assignable to type 'Partials'.
+src/handlers/index.ts(23,27): error TS2322: Type 'string' is not assignable to type 'Partials'.
+src/handlers/index.ts(23,38): error TS2322: Type 'string' is not assignable to type 'Partials'.
+src/handlers/index.ts(23,53): error TS2322: Type 'string' is not assignable to type 'Partials'.
+src/handlers/index.ts(23,61): error TS2322: Type 'string' is not assignable to type 'Partials'.
+src/index.ts(4,10): error TS6133: 'Client' is declared but its value is never read.
+src/services/moderation/AuditService.ts(25,11): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'InputJsonValue | NullableJsonNullValueInput | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'InputJsonValue | NullableJsonNullValueInput | undefined'.
+    Type 'Record<string, unknown>' is not assignable to type 'InputJsonArray'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 20 more.
+src/services/moderation/CaseService.ts(164,38): error TS2339: Property 'appeals' does not exist on type '{ id: string; caseNumber: number; guildId: string; targetId: string; moderatorId: string; platform: Platform; type: PunishmentType; reason: string; reasonCode: string | null; ... 8 more ...; expiresAt: Date | null; }'.
+src/services/moderation/DurationService.ts(3,7): error TS6133: 'log' is declared but its value is never read.
+src/services/moderation/DurationService.ts(37,28): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/moderation/DurationService.ts(38,18): error TS2532: Object is possibly 'undefined'.
+src/services/moderation/EvidenceService.ts(25,11): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'InputJsonValue | NullableJsonNullValueInput | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'InputJsonValue | NullableJsonNullValueInput | undefined'.
+    Type 'Record<string, unknown>' is not assignable to type 'InputJsonArray'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 20 more.
+src/services/moderation/ModerationService.ts(2,23): error TS6133: 'CaseData' is declared but its value is never read.
+src/services/moderation/ModerationService.ts(4,29): error TS6133: 'PermissionCheckResult' is declared but its value is never read.
+src/services/moderation/ModerationService.ts(5,27): error TS6133: 'DurationResult' is declared but its value is never read.
+src/services/moderation/ModerationService.ts(8,10): error TS6133: 'AppealService' is declared but its value is never read.
+src/services/moderation/ModerationService.ts(10,31): error TS6133: 'NotificationData' is declared but its value is never read.
+src/services/moderation/ModerationService.ts(11,21): error TS6133: 'getOrCreateGuild' is declared but its value is never read.
+src/services/moderation/ModerationService.ts(11,39): error TS6133: 'getOrCreateUser' is declared but its value is never read.
+src/services/moderation/NotificationService.ts(77,17): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'ColorResolvable | null'.
+  Type 'undefined' is not assignable to type 'ColorResolvable | null'.
+src/services/moderation/PermissionService.ts(9,7): error TS6133: 'log' is declared but its value is never read.
+src/services/moderation/PunishmentService.ts(1,30): error TS6133: 'TextChannel' is declared but its value is never read.
+src/services/policy/EscalationService.ts(105,5): error TS2322: Type 'EscalationStep | undefined' is not assignable to type 'EscalationStep | null'.
+  Type 'undefined' is not assignable to type 'EscalationStep | null'.
+src/services/policy/PolicyService.ts(1,23): error TS6133: 'Client' is declared but its value is never read.
+src/services/policy/PolicyService.ts(2,30): error TS6133: 'GuildPolicy' is declared but its value is never read.
+src/services/policy/PolicyService.ts(4,37): error TS6133: 'RuleCheckResult' is declared but its value is never read.
+src/services/policy/RuleEngine.ts(90,74): error TS6133: 'createdBy' is declared but its value is never read.
+src/services/setup/BackupService.ts(121,69): error TS6133: 'error' is declared but its value is never read.
+src/services/setup/ConfigProfileService.ts(3,7): error TS6133: 'log' is declared but its value is never read.
+src/services/setup/HealthCheckService.ts(95,59): error TS2538: Type 'bigint' cannot be used as an index type.
+src/services/setup/HealthCheckService.ts(221,35): error TS6133: 'guild' is declared but its value is never read.
+src/services/setup/SetupService.ts(5,3): error TS6133: 'PermissionsBitField' is declared but its value is never read.
+src/services/setup/SetupService.ts(7,3): error TS6133: 'TextChannel' is declared but its value is never read.
+src/services/setup/SetupService.ts(8,3): error TS6133: 'Role' is declared but its value is never read.
+src/services/setup/SetupService.ts(205,5): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'Record<string, unknown>'.
+  Type 'undefined' is not assignable to type 'Record<string, unknown>'.
+src/services/setup/SetupService.ts(338,5): error TS2322: Type '{ name: string; type: string; category?: string | undefined; }[] | undefined' is not assignable to type '{ name: string; type: string; category?: string | undefined; }[]'.
+  Type 'undefined' is not assignable to type '{ name: string; type: string; category?: string | undefined; }[]'.
+src/services/setup/SetupService.ts(419,5): error TS2322: Type '{ name: string; color?: string | undefined; permissions: string[]; }[] | undefined' is not assignable to type '{ name: string; color?: string | undefined; permissions: string[]; }[]'.
+  Type 'undefined' is not assignable to type '{ name: string; color?: string | undefined; permissions: string[]; }[]'.
+src/services/setup/SetupService.ts(466,46): error TS2561: Object literal may only specify known properties, but 'Description' does not exist in type '{ name: string; displayName: string; description: string; }'. Did you mean to write 'description'?
+src/structures/CommandHandler.ts(1,18): error TS6133: 'Collection' is declared but its value is never read.
+src/structures/CommandHandler.ts(9,34): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
+src/structures/CommandHandler.ts(69,26): error TS6133: 'client' is declared but its value is never read.
+src/temp/index.ts(4,23): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
+src/types/command.ts(9,3): error TS6133: 'ContextMenuCommandBuilder' is declared but its value is never read.
+src/utils/embed.ts(140,23): error TS2339: Property 'send' does not exist on type 'TextBasedChannel'.
+  Property 'send' does not exist on type 'PartialGroupDMChannel'.
+src/utils/embed.ts(143,18): error TS2339: Property 'followUp' does not exist on type 'never'.
+src/utils/embed.ts(144,14): error TS2339: Property 'channel' does not exist on type 'never'.
+src/utils/embed.ts(162,12): error TS2352: Conversion of type 'ChatInputCommandInteraction<CacheType>' to type 'Message<boolean>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'ChatInputCommandInteraction<CacheType>' is missing the following properties from type 'Message<boolean>': _patch, activity, attachments, author, and 54 more.
+src/utils/embed.ts(162,39): error TS2339: Property 'send' does not exist on type 'DMChannel | NewsChannel | PartialDMChannel | PartialGroupDMChannel | PrivateThreadChannel | PublicThreadChannel<...> | StageChannel | TextChannel | VoiceChannel'.
+  Property 'send' does not exist on type 'PartialGroupDMChannel'.
+src/utils/embed.ts(179,12): error TS2352: Conversion of type 'ChatInputCommandInteraction<CacheType>' to type 'Message<boolean>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'ChatInputCommandInteraction<CacheType>' is missing the following properties from type 'Message<boolean>': _patch, activity, attachments, author, and 54 more.
+src/utils/embed.ts(179,39): error TS2339: Property 'send' does not exist on type 'DMChannel | NewsChannel | PartialDMChannel | PartialGroupDMChannel | PrivateThreadChannel | PublicThreadChannel<...> | StageChannel | TextChannel | VoiceChannel'.
+  Property 'send' does not exist on type 'PartialGroupDMChannel'.
+src/utils/permissions.ts(9,7): error TS6133: 'log' is declared but its value is never read.

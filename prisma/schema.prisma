@@ -1,0 +1,718 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// CORE MODELS
+// ==========================================
+
+model Guild {
+  id            String   @id @default(cuid())
+  guildId       String   @unique
+  name          String
+  iconUrl       String?
+  ownerId       String
+  prefix        String   @default("!")
+  language      String   @default("tr")
+  enabled       Boolean  @default(true)
+  logChannelId  String?
+  muteRoleId    String?
+  jailRoleId    String?
+  welcomeChannelId String?
+  leaveChannelId   String?
+  autoModEnabled   Boolean @default(false)
+  spamProtection   Boolean @default(false)
+  maxWarnings      Int     @default(3)
+  caseCount        Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  warnings      Warning[]
+  punishments    Punishment[]
+  tickets       Ticket[]
+  settings      GuildSettings?
+  customCommands CustomCommand[]
+  autoResponses  AutoResponse[]
+  cases         Case[]
+  reasons       Reason[]
+  moderationLogs ModerationLog[]
+  guildPolicy   GuildPolicy?
+  escalationChains EscalationChain[]
+  violationRules ViolationRule[]
+  permissionProfiles PermissionProfile[]
+  modules       Module[]
+  setupHistory  SetupHistory[]
+  healthChecks  HealthCheck[]
+  configBackups ConfigBackup[]
+  guildChannels GuildChannel[]
+  guildRoles    GuildRole[]
+
+  @@map("guilds")
+}
+
+model GuildSettings {
+  id        String @id @default(cuid())
+  guildId   String @unique
+  guild     Guild  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  welcomeEnabled    Boolean @default(false)
+  welcomeMessage    String?
+  leaveEnabled      Boolean @default(false)
+  leaveMessage      String?
+  antiRaidEnabled   Boolean @default(false)
+  antiRaidThreshold Int     @default(5)
+  autoRoleEnabled   Boolean @default(false)
+  autoRoleId        String?
+  logMessages       Boolean @default(false)
+  logJoins          Boolean @default(false)
+  logBans           Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("guild_settings")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  username  String
+  discriminator String?
+  avatarUrl String?
+  isBotOwner Boolean @default(false)
+  isDeveloper Boolean @default(false)
+  balance   Int      @default(0)
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  totalMessages Int  @default(0)
+  lastActiveAt   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warnings  Warning[]
+  punishments Punishment[]
+  tickets   Ticket[]
+  cases     Case[] @relation("CaseTarget")
+  appeals   Appeal[]
+  moderatedCases Case[] @relation("CaseModerator")
+  moderationLogs ModerationLog[] @relation("LogModerator")
+  premium   Premium?
+
+  @@map("users")
+}
+
+// ==========================================
+// MODERATION ENGINE MODELS
+// ==========================================
+
+model Case {
+  id              String    @id @default(cuid())
+  caseNumber      Int
+  guildId         String
+  targetId        String?
+  targetChannelId String?
+  moderatorId     String
+  platform        Platform  @default(DISCORD)
+  type            PunishmentType
+  reason          String
+  reasonCode      String?
+  duration        Int?
+  durationText    String?
+  metadata        Json?
+  active          Boolean   @default(true)
+  revoked         Boolean   @default(false)
+  revokedBy       String?
+  revokedReason   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  expiresAt       DateTime?
+
+  guild         Guild     @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  target        User?     @relation("CaseTarget", fields: [targetId], references: [userId], onDelete: Cascade)
+  moderator     User      @relation("CaseModerator", fields: [moderatorId], references: [userId], onDelete: Cascade)
+  evidence      Evidence[]
+  appeals       Appeal[]
+  timeline      CaseTimeline[]
+
+  @@unique([guildId, caseNumber])
+  @@index([guildId, targetId])
+  @@index([guildId, targetChannelId])
+  @@index([guildId, moderatorId])
+  @@index([active])
+  @@map("cases")
+}
+
+model Evidence {
+  id        String   @id @default(cuid())
+  caseId    String
+  type      EvidenceType
+  url       String?
+  content   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("evidence")
+}
+
+model Reason {
+  id        String   @id @default(cuid())
+  guildId   String
+  code      String
+  label     String
+  description String?
+  category  String?
+  enabled   Boolean  @default(true)
+  usageCount Int     @default(0)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild     Guild    @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, code])
+  @@map("reasons")
+}
+
+model Appeal {
+  id          String       @id @default(cuid())
+  caseId      String
+  userId      String
+  status      AppealStatus @default(PENDING)
+  reason      String
+  response    String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  case        Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([status])
+  @@map("appeals")
+}
+
+model ModerationLog {
+  id          String   @id @default(cuid())
+  guildId     String
+  moderatorId String
+  targetId    String?
+  action      String
+  details     Json?
+  caseNumber  Int?
+  createdAt   DateTime @default(now())
+
+  guild       Guild    @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  moderator   User     @relation("LogModerator", fields: [moderatorId], references: [userId], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([moderatorId])
+  @@map("moderation_logs")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Platform {
+  DISCORD
+  GAME
+}
+
+enum PunishmentType {
+  MUTE
+  UNMUTE
+  KICK
+  BAN
+  UNBAN
+  JAIL
+  UNJAIL
+  TIMEOUT
+  UNTIMEOUT
+  WARN
+  PURGE
+  LOCK
+  UNLOCK
+  SLOWMODE
+}
+
+enum EvidenceType {
+  MESSAGE_URL
+  IMAGE
+  VIDEO
+  GIF
+  FILE
+  TEXT
+  EXTERNAL_URL
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ==========================================
+// OTHER MODELS
+// ==========================================
+
+model Warning {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  moderatorId String
+  reason    String
+  evidence  String?
+  expiresAt DateTime?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  guild     Guild  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([guildId, userId])
+  @@map("warnings")
+}
+
+model Punishment {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  moderatorId String
+  type      PunishmentType
+  reason    String
+  duration  Int?
+  active    Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  guild     Guild  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([guildId, userId])
+  @@map("punishments")
+}
+
+model Ticket {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String   @unique
+  creatorId   String
+  assignedTo  String?
+  status      TicketStatus @default(OPEN)
+  priority    Int      @default(0)
+  category    String?
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+  closedBy    String?
+
+  guild       Guild  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  creator     User   @relation(fields: [creatorId], references: [userId], onDelete: Cascade)
+
+  messages    TicketMessage[]
+
+  @@index([guildId, status])
+  @@map("tickets")
+}
+
+enum TicketStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  content   String
+  embedData Json?
+  createdAt DateTime @default(now())
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
+
+model CustomCommand {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  response  String
+  embedData Json?
+  enabled   Boolean  @default(true)
+  cooldown  Int      @default(0)
+  usageCount Int     @default(0)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild     Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("custom_commands")
+}
+
+model AutoResponse {
+  id        String   @id @default(cuid())
+  guildId   String
+  trigger   String
+  response  String
+  matchType MatchType @default(CONTAINS)
+  enabled   Boolean  @default(true)
+  cooldown  Int      @default(0)
+  usageCount Int     @default(0)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild     Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("auto_responses")
+}
+
+enum MatchType {
+  EXACT
+  CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  REGEX
+}
+
+model BlacklistedWord {
+  id        String   @id @default(cuid())
+  guildId   String
+  word      String
+  action    String   @default("delete")
+  enabled   Boolean  @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, word])
+  @@map("blacklisted_words")
+}
+
+model Cooldown {
+  id        String   @id @default(cuid())
+  userId    String
+  command   String
+  guildId   String
+  expiresAt DateTime
+
+  @@unique([userId, command, guildId])
+  @@map("cooldowns")
+}
+
+model BotStats {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  guildCount    Int      @default(0)
+  userCount     Int      @default(0)
+  commandCount  Int      @default(0)
+  messageCount  Int      @default(0)
+  uptime        Int      @default(0)
+
+  @@map("bot_stats")
+}
+
+// ==========================================
+// POLICY ENGINE MODELS
+// ==========================================
+
+model GuildPolicy {
+  id                        String   @id @default(cuid())
+  guildId                   String   @unique
+  maxWarnings               Int      @default(3)
+  maxTimeoutMinutes         Int      @default(40320)
+  banPolicy                 String   @default("STRIKE_3")
+  appealEnabled             Boolean  @default(true)
+  evidenceRequired          Boolean  @default(false)
+  dmEnabled                 Boolean  @default(true)
+  gamePunishmentsEnabled    Boolean  @default(false)
+  dryRunMode                Boolean  @default(false)
+  escalationEnabled         Boolean  @default(true)
+  cooldownMinutes           Int      @default(5)
+  sameTargetCooldownMinutes Int      @default(1)
+  autoDeleteEvidence        Boolean  @default(false)
+  notifyOnAppeal            Boolean  @default(true)
+  requireReason             Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("guild_policies")
+}
+
+model EscalationChain {
+  id             String   @id @default(cuid())
+  guildId        String
+  name           String   @default("DEFAULT")
+  enabled        Boolean  @default(true)
+  steps          Json     @default("[{\"step\":1,\"action\":\"WARN\",\"reason\":\"İlk uyarı\"},{\"step\":2,\"action\":\"WARN\",\"reason\":\"İkinci uyarı\"},{\"step\":3,\"action\":\"TIMEOUT\",\"duration\":\"1h\",\"reason\":\"Üçüncü uyarı - zaman aşımı\"},{\"step\":4,\"action\":\"MUTE\",\"duration\":\"1d\",\"reason\":\"Dördüncü ihlal - susturma\"},{\"step\":5,\"action\":\"KICK\",\"reason\":\"Beşinci ihlal - atılma\"},{\"step\":6,\"action\":\"BAN\",\"reason\":\"Altıncı ihlal - yasaklama\"}]")
+  resetAfterDays Int      @default(30)
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("escalation_chains")
+}
+
+model ViolationRule {
+  id                 String   @id @default(cuid())
+  guildId            String
+  code               String
+  name               String
+  description        String?
+  category           String   @default("GENEL")
+  enabled            Boolean  @default(true)
+  punishmentType     String   @default("WARN")
+  duration           String?
+  points             Int      @default(1)
+  autoReport         Boolean  @default(false)
+  cooldownMinutes    Int      @default(0)
+  maxOccurrences     Int?
+  escalationChainId  String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, code])
+  @@map("violation_rules")
+}
+
+model PermissionProfile {
+  id                 String   @id @default(cuid())
+  guildId            String
+  name               String
+  level              Int      @default(0)
+  permissions        Json     @default("[]")
+  maxBanDuration     Int?
+  maxMuteDuration    Int?
+  canBan             Boolean  @default(false)
+  canKick            Boolean  @default(false)
+  canMute            Boolean  @default(false)
+  canWarn            Boolean  @default(false)
+  canJail            Boolean  @default(false)
+  canUnban           Boolean  @default(false)
+  canViewCases       Boolean  @default(true)
+  canManageAppeals   Boolean  @default(false)
+  canManagePolicies  Boolean  @default(false)
+  canViewAuditLog    Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("permission_profiles")
+}
+
+model CaseTimeline {
+  id        String   @id @default(cuid())
+  caseId    String
+  action    String
+  actorId   String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("case_timeline")
+}
+
+model PolicyCooldown {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  action    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, userId, action])
+  @@map("policy_cooldowns")
+}
+
+model ModerationList {
+  id        String    @id @default(cuid())
+  guildId   String
+  userId    String
+  type      String
+  reason    String?
+  addedBy   String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([guildId, userId, type])
+  @@map("moderation_lists")
+}
+
+model UserViolationCount {
+  id             String   @id @default(cuid())
+  guildId        String
+  userId         String
+  ruleCode       String
+  count          Int      @default(1)
+  lastOccurrence DateTime @default(now())
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([guildId, userId, ruleCode])
+  @@map("user_violation_counts")
+}
+
+model DryRunLog {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  action      String
+  reason      String
+  duration    String?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@map("dry_run_logs")
+}
+
+// ==========================================
+// SETUP & MODULE ENGINE MODELS
+// ==========================================
+
+model Module {
+  id          String   @id @default(cuid())
+  guildId     String
+  name        String
+  displayName String
+  description String?
+  enabled     Boolean  @default(false)
+  configured  Boolean  @default(false)
+  version     String   @default("1.0.0")
+  lastUpdated DateTime @default(now())
+  config      Json?
+  enabledBy   String?
+  disabledBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("modules")
+}
+
+model SetupHistory {
+  id            String    @id @default(cuid())
+  guildId       String
+  userId        String
+  profile       String
+  status        String    @default("PENDING")
+  itemsCreated  Json?
+  itemsSkipped  Json?
+  errors        Json?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("setup_history")
+}
+
+model HealthCheck {
+  id         String   @id @default(cuid())
+  guildId    String
+  status     String   @default("OK")
+  issues     Json     @default("[]")
+  warnings   Json     @default("[]")
+  checkedAt  DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("health_checks")
+}
+
+model ConfigBackup {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  data      Json
+  createdBy String
+  createdAt DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("config_backups")
+}
+
+model GuildChannel {
+  id           String   @id @default(cuid())
+  guildId      String
+  channelId    String
+  channelName  String
+  channelType  String
+  category     String?
+  purpose      String?
+  autoCreated  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, channelId])
+  @@map("guild_channels")
+}
+
+model GuildRole {
+  id            String   @id @default(cuid())
+  guildId       String
+  roleId        String
+  roleName      String
+  roleColor     String?
+  rolePosition  Int?
+  permissions   Json?
+  autoCreated   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, roleId])
+  @@map("guild_roles")
+}
+
+// ==========================================
+// PREMIUM MODEL
+// ==========================================
+
+model Premium {
+  id          String    @id @default(cuid())
+  userId      String
+  grantedBy   String
+  grantedAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([active])
+  @@index([expiresAt])
+  @@map("premiums")
+}

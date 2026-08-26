@@ -1,0 +1,30 @@
+export const colors = {
+  primary: 0x2b2d31,
+  success: 0x57f287,
+  warning: 0xfee75c,
+  error: 0xed4245,
+  info: 0x5865f2,
+  blurple: 0x5865f2,
+  white: 0xffffff,
+  black: 0x000000,
+  dark: 0x23272a,
+  light: 0x99aab5,
+  gold: 0xf1c40f,
+  orange: 0xe67e22,
+  purple: 0x9b59b6,
+  pink: 0xe91e63,
+  cyan: 0x00bcd4,
+  navy: 0x3498db,
+  teal: 0x1abc9c,
+  lime: 0x2ecc71,
+  maroon: 0x800000,
+  darkRed: 0xa80000,
+} as const;
+
+export const embedColors = {
+  success: 0x00ff00,
+  error: 0xff0000,
+  warning: 0xffff00,
+  info: 0x0099ff,
+  default: 0x99aab5,
+} as const;

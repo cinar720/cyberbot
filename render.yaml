@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: cyberbot
+    runtime: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cyberbot-db
+          property: connectionString
+      - key: TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: BOT_NAME
+        value: CyberBOT
+      - key: BOT_VERSION
+        value: 1.0.0
+      - key: WEB_PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+
+databases:
+  - name: cyberbot-db
+    plan: free
+    databaseName: cyberbot
+    user: cyberbot

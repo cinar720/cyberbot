@@ -15,7 +15,10 @@ function getClientSecret(): string {
 }
 
 function getRedirectUri(): string {
-  return process.env.REDIRECT_URI || 'http://localhost:3000/callback';
+  if (process.env.REDIRECT_URI) return process.env.REDIRECT_URI;
+  const host = process.env.RENDER_EXTERNAL_URL || process.env.WEB_URL || '';
+  if (host) return `${host}/callback`;
+  return 'http://localhost:3000/callback';
 }
 
 function getLinkedRolesRedirectUri(): string {

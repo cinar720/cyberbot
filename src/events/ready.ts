@@ -5,7 +5,7 @@ import { main } from '../config/main.js';
 
 const log = new Logger('READY');
 
-const VOICE_CHANNEL_ID = '1510442825223766190';
+const VOICE_CHANNEL_ID = '1542277754425188513';
 
 export default {
   name: Events.ClientReady,

@@ -14,8 +14,6 @@ export const premiumConfig = {
     'leave-config',
     'setup',
     'setup-apply',
-    'editembed',
-    'editsay',
   ],
 } as const;
 

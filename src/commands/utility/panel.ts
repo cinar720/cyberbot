@@ -116,14 +116,14 @@ const featureInfo: Record<string, { title: string; description: string }> = {
     title: 'Guard',
     description:
       'Anti-raid, anti-spam, anti-nuke koruma sistemleri.\n\n' +
-      'Komutlar: `/guard`, `/guard-config`, `/guard-status`\n\n' +
+      'Komutlar: `/guard`, `/guard-config`\n\n' +
       'Detaylı bilgi için: `/help kategori:moderation`',
   },
   automod: {
     title: 'AutoMod',
     description:
       'Otomatik moderasyon kuralları ile spam, link, kelime filtresi.\n\n' +
-      'Komutlar: `/automod`, `/automod-config`, `/automod-status`\n\n' +
+      'Komutlar: `/automod`, `/automod-config`\n\n' +
       'Detaylı bilgi için: `/help kategori:moderation`',
   },
   ticket: {

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { getPrisma } from '../../services/database/index.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -21,6 +21,9 @@ export default {
   async execute({ interaction, member, guild }: CommandContext) {
     if (!guild || !member) return;
 
+    let deferred = false;
+    try { await interaction.deferReply(); deferred = true; } catch { /* already acknowledged */ }
+
     const db = getPrisma();
 
     const ticket = await db.ticket.findFirst({
@@ -36,16 +39,16 @@ export default {
     });
 
     if (!ticket) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Bu kanalda bir destek talebi bulunamadı.')],
-      });
+      }) : interaction.followUp({ embeds: [CyberEmbed.error('Hata', 'Bu kanalda bir destek talebi bulunamadı.')], flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
     if (ticket.messages.length === 0) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.warning('Uyarı', 'Bu destek talebinde henüz mesaj bulunmuyor.')],
-      });
+      }) : interaction.followUp({ embeds: [CyberEmbed.warning('Uyarı', 'Bu destek talebinde henüz mesaj bulunmuyor.')], flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -93,9 +96,9 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({
+    await (deferred ? interaction.editReply({
       embeds: [embed],
       files: [attachment],
-    });
+    }) : interaction.followUp({ embeds: [embed], files: [attachment], flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

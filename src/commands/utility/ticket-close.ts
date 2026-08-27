@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { getPrisma } from '../../services/database/index.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -27,6 +27,9 @@ export default {
   async execute({ interaction, member, guild }: CommandContext) {
     if (!guild || !member) return;
 
+    let deferred = false;
+    try { await interaction.deferReply(); deferred = true; } catch { /* already acknowledged */ }
+
     const db = getPrisma();
 
     const ticket = await db.ticket.findFirst({
@@ -38,9 +41,9 @@ export default {
     });
 
     if (!ticket) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Bu kanal aktif bir destek talebi değil.')],
-      });
+      }) : interaction.followUp({ embeds: [CyberEmbed.error('Hata', 'Bu kanal aktif bir destek talebi değil.')], flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -67,7 +70,7 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ embeds: [embed], flags: [MessageFlags.Ephemeral] }).catch(() => null));
 
     const closeEmbed = CyberEmbed.warning('Destek Talebi Kapatıldı')
       .setDescription(

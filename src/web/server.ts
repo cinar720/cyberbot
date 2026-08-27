@@ -7,6 +7,9 @@ import guildsRouter from './routes/guilds.js';
 import healthRouter from './routes/health.js';
 import discordRouter from './routes/discord.js';
 import roleConnectionsRouter from './routes/roleConnections.js';
+import musicRouter from './routes/music.js';
+import levelRouter from './routes/level.js';
+import voiceRouter from './routes/voice.js';
 import { errorHandler, notFoundHandler } from './controllers/errorHandler.js';
 import { optionalAuth } from './middleware/auth.js';
 import { Logger } from '../utils/logger.js';
@@ -43,12 +46,27 @@ export function createWebServer(): void {
 
   app.use('/api/auth', authRouter);
   app.use('/api/guilds', guildsRouter);
+  app.use('/api/guilds', musicRouter);
+  app.use('/api/guilds', levelRouter);
+  app.use('/api/guilds', voiceRouter);
   app.use('/api/health', healthRouter);
   app.use('/api/role-connections', roleConnectionsRouter);
   app.use('/api', apiRouter);
 
   app.get('/login', (_req, res) => {
     res.sendFile(join(__dirname, 'public', 'login.html'));
+  });
+
+  app.get('/music', (_req, res) => {
+    res.sendFile(join(__dirname, 'public', 'music.html'));
+  });
+
+  app.get('/level', (_req, res) => {
+    res.sendFile(join(__dirname, 'public', 'level.html'));
+  });
+
+  app.get('/voice', (_req, res) => {
+    res.sendFile(join(__dirname, 'public', 'voice.html'));
   });
 
   app.get('/callback', (req, res) => {

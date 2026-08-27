@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberBOT - Level Sistemi</title>
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white'>CB</text></svg>">
+  <style>
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); margin-bottom: var(--spacing-sm); }
+    .form-input { width: 100%; padding: var(--spacing-sm) var(--spacing-md); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--text-sm); transition: border-color var(--transition-fast); }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-checkbox { display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; }
+    .form-checkbox input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+    .config-card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); padding: var(--spacing-xl); margin-bottom: var(--spacing-xl); }
+    .config-card-title { font-size: var(--text-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--spacing-lg); }
+    .leaderboard-table { width: 100%; border-collapse: collapse; }
+    .leaderboard-table th, .leaderboard-table td { padding: var(--spacing-md); text-align: left; border-bottom: 1px solid var(--surface-border); }
+    .leaderboard-table th { font-size: var(--text-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+    .leaderboard-table td { font-size: var(--text-sm); color: var(--text-primary); }
+    .leaderboard-table tr:hover { background: var(--surface-hover); }
+    .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 700; }
+    .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; }
+    .rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: #000; }
+    .rank-3 { background: linear-gradient(135deg, #d97706, #b45309); color: #000; }
+    .control-btn { padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); border: 1px solid transparent; }
+    .control-btn-primary { background: var(--accent); color: white; }
+    .control-btn-primary:hover { background: var(--accent-hover); }
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: var(--spacing-md) var(--spacing-xl); background: var(--success); color: white; border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 500; box-shadow: var(--shadow-lg); z-index: 1000; display: none; }
+    .toast.show { display: block; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast" class="toast"></div>
+  <script>
+    let currentUser = null;
+    let guilds = [];
+    let selectedGuild = null;
+    let levelConfig = null;
+    let leaderboard = [];
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, { credentials: 'same-origin', ...options });
+      if (res.status === 401) { window.location.href = '/login'; return null; }
+      return res.json();
+    }
+
+    async function checkAuth() {
+      const res = await apiFetch('/api/auth/me');
+      if (!res || !res.success || !res.data) { window.location.href = '/login'; return false; }
+      currentUser = res.data;
+      return true;
+    }
+
+    async function loadGuilds() {
+      const res = await apiFetch('/api/guilds');
+      if (!res || !res.success) { guilds = []; return; }
+      guilds = res.data || [];
+      if (guilds.length > 0 && !selectedGuild) {
+        const params = new URLSearchParams(window.location.search);
+        const guildId = params.get('guild');
+        selectedGuild = guilds.find(g => g.id === guildId) || guilds[0];
+      }
+    }
+
+    async function loadLevelData() {
+      if (!selectedGuild) return;
+      const [configRes, leaderboardRes] = await Promise.all([
+        apiFetch(`/api/guilds/${selectedGuild.id}/level/config`),
+        apiFetch(`/api/guilds/${selectedGuild.id}/level/leaderboard`),
+      ]);
+      if (configRes?.success) levelConfig = configRes.data;
+      if (leaderboardRes?.success) leaderboard = leaderboardRes.data || [];
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function saveConfig() {
+      if (!selectedGuild) return;
+      const body = {
+        xpPerMessage: parseInt(document.getElementById('xpPerMessage').value) || 15,
+        xpCooldown: parseInt(document.getElementById('xpCooldown').value) || 60,
+        levelUpChannelId: document.getElementById('levelUpChannelId').value || null,
+        levelUpMessage: document.getElementById('levelUpMessage').value || null,
+        enabled: document.getElementById('enabled').checked,
+      };
+      const res = await apiFetch(`/api/guilds/${selectedGuild.id}/level/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res?.success) {
+        levelConfig = res.data;
+        showToast('Ayarlar kaydedildi!');
+      }
+    }
+
+    function selectGuild(guildId) {
+      selectedGuild = guilds.find(g => g.id === guildId) || null;
+      if (selectedGuild) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('guild', selectedGuild.id);
+        window.history.replaceState({}, '', `/level?${params.toString()}`);
+        loadLevelData().then(render);
+      }
+    }
+
+    function getRankClass(index) {
+      if (index === 0) return 'rank-1';
+      if (index === 1) return 'rank-2';
+      if (index === 2) return 'rank-3';
+      return '';
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="app-layout">
+          <div class="main-content">
+            <header class="header">
+              <div class="header-left">
+                <h1 class="header-title">Level Sistemi</h1>
+              </div>
+              <div class="header-right">
+                <select class="form-input" style="width:auto;min-width:200px;" onchange="selectGuild(this.value)">
+                  ${guilds.map(g => `<option value="${g.id}" ${selectedGuild?.id === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
+                </select>
+                <a href="/dashboard" class="embed-btn embed-btn-secondary" style="padding:6px 12px;font-size:var(--text-xs);">Dashboard</a>
+              </div>
+            </header>
+            <div class="page-content">
+              ${!selectedGuild ? '<div class="empty-state"><div class="empty-state-title">Sunucu seçin</div></div>' : `
+                <div class="config-card">
+                  <div class="config-card-title">Level Ayarları</div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Mesaj Başına XP</label>
+                      <input type="number" id="xpPerMessage" class="form-input" value="${levelConfig?.xpPerMessage || 15}" min="1">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">XP Bekleme Süresi (saniye)</label>
+                      <input type="number" id="xpCooldown" class="form-input" value="${levelConfig?.xpCooldown || 60}" min="0">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Level Up Kanal ID</label>
+                      <input type="text" id="levelUpChannelId" class="form-input" value="${levelConfig?.levelUpChannelId || ''}" placeholder="Kanal ID'si">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Level Up Mesajı</label>
+                      <input type="text" id="levelUpMessage" class="form-input" value="${levelConfig?.levelUpMessage || ''}" placeholder="Tebrikler {user}, **Level {level}** oldun!">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-checkbox">
+                      <input type="checkbox" id="enabled" ${levelConfig?.enabled !== false ? 'checked' : ''}>
+                      <span>Level sistemi aktif</span>
+                    </label>
+                  </div>
+                  <button class="control-btn control-btn-primary" onclick="saveConfig()">Kaydet</button>
+                </div>
+
+                <div class="config-card">
+                  <div class="config-card-title">Liderlik Tablosu (İlk 20)</div>
+                  ${leaderboard.length === 0 ? '<div class="empty-state" style="padding:var(--spacing-xl);"><div class="empty-state-title" style="font-size:var(--text-sm);">Henüz veri yok</div></div>' : `
+                    <table class="leaderboard-table">
+                      <thead>
+                        <tr>
+                          <th style="width:60px;">Sıra</th>
+                          <th>Kullanıcı ID</th>
+                          <th>Level</th>
+                          <th>Toplam XP</th>
+                          <th>Mesaj</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${leaderboard.map((item, i) => `
+                          <tr>
+                            <td><span class="rank-badge ${getRankClass(i)}">${i + 1}</span></td>
+                            <td>${item.userId}</td>
+                            <td><strong>${item.level}</strong></td>
+                            <td>${item.totalXp.toLocaleString()}</td>
+                            <td>${item.messages.toLocaleString()}</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  `}
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function init() {
+      const ok = await checkAuth();
+      if (!ok) return;
+      await loadGuilds();
+      if (selectedGuild) await loadLevelData();
+      render();
+    }
+
+    init();
+  </script>
+</body>
+</html>

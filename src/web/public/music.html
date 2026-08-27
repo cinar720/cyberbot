@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberBOT - Müzik Yönetimi</title>
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white'>CB</text></svg>">
+  <style>
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); margin-bottom: var(--spacing-sm); }
+    .form-input { width: 100%; padding: var(--spacing-sm) var(--spacing-md); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--text-sm); transition: border-color var(--transition-fast); }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-checkbox { display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; }
+    .form-checkbox input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+    .config-card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); padding: var(--spacing-xl); margin-bottom: var(--spacing-xl); }
+    .config-card-title { font-size: var(--text-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--spacing-lg); }
+    .queue-list { background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .queue-item { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md) var(--spacing-xl); border-bottom: 1px solid var(--surface-border); }
+    .queue-item:last-child { border-bottom: none; }
+    .queue-item-title { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+    .queue-item-meta { font-size: var(--text-xs); color: var(--text-muted); }
+    .player-controls { display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-xl); }
+    .control-btn { padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); border: 1px solid transparent; }
+    .control-btn-primary { background: var(--accent); color: white; }
+    .control-btn-primary:hover { background: var(--accent-hover); }
+    .control-btn-secondary { background: var(--surface); color: var(--text-primary); border-color: var(--surface-border); }
+    .control-btn-secondary:hover { background: var(--surface-hover); }
+    .control-btn-danger { background: var(--danger); color: white; }
+    .control-btn-danger:hover { filter: brightness(1.1); }
+    .search-bar { display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-xl); }
+    .search-bar input { flex: 1; }
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: var(--spacing-md) var(--spacing-xl); background: var(--success); color: white; border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 500; box-shadow: var(--shadow-lg); z-index: 1000; display: none; }
+    .toast.show { display: block; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast" class="toast"></div>
+  <script>
+    let currentUser = null;
+    let guilds = [];
+    let selectedGuild = null;
+    let musicConfig = null;
+    let queue = [];
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, { credentials: 'same-origin', ...options });
+      if (res.status === 401) { window.location.href = '/login'; return null; }
+      return res.json();
+    }
+
+    async function checkAuth() {
+      const res = await apiFetch('/api/auth/me');
+      if (!res || !res.success || !res.data) { window.location.href = '/login'; return false; }
+      currentUser = res.data;
+      return true;
+    }
+
+    async function loadGuilds() {
+      const res = await apiFetch('/api/guilds');
+      if (!res || !res.success) { guilds = []; return; }
+      guilds = res.data || [];
+      if (guilds.length > 0 && !selectedGuild) {
+        const params = new URLSearchParams(window.location.search);
+        const guildId = params.get('guild');
+        selectedGuild = guilds.find(g => g.id === guildId) || guilds[0];
+      }
+    }
+
+    async function loadMusicData() {
+      if (!selectedGuild) return;
+      const [configRes, queueRes] = await Promise.all([
+        apiFetch(`/api/guilds/${selectedGuild.id}/music/config`),
+        apiFetch(`/api/guilds/${selectedGuild.id}/music/queue`),
+      ]);
+      if (configRes?.success) musicConfig = configRes.data;
+      if (queueRes?.success) queue = queueRes.data || [];
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function saveConfig() {
+      if (!selectedGuild) return;
+      const body = {
+        djRoleId: document.getElementById('djRoleId').value || null,
+        volume: parseInt(document.getElementById('volume').value) || 80,
+        autoLeave: document.getElementById('autoLeave').checked,
+        autoLeaveTimer: parseInt(document.getElementById('autoLeaveTimer').value) || 300,
+        announceSongs: document.getElementById('announceSongs').checked,
+      };
+      const res = await apiFetch(`/api/guilds/${selectedGuild.id}/music/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res?.success) {
+        musicConfig = res.data;
+        showToast('Ayarlar kaydedildi!');
+      }
+    }
+
+    async function playSong() {
+      if (!selectedGuild) return;
+      const query = document.getElementById('searchInput').value;
+      if (!query) return;
+      const res = await apiFetch(`/api/guilds/${selectedGuild.id}/music/play`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      if (res?.success) {
+        showToast('Müzik oynatma isteği gönderildi!');
+        document.getElementById('searchInput').value = '';
+      }
+    }
+
+    async function stopMusic() {
+      if (!selectedGuild) return;
+      await apiFetch(`/api/guilds/${selectedGuild.id}/music/stop`, { method: 'POST' });
+      showToast('Müzik durduruldu!');
+    }
+
+    async function skipMusic() {
+      if (!selectedGuild) return;
+      await apiFetch(`/api/guilds/${selectedGuild.id}/music/skip`, { method: 'POST' });
+      showToast('Parça atlandı!');
+    }
+
+    async function pauseMusic() {
+      if (!selectedGuild) return;
+      await apiFetch(`/api/guilds/${selectedGuild.id}/music/pause`, { method: 'POST' });
+      showToast('Müzik duraklatıldı!');
+    }
+
+    async function resumeMusic() {
+      if (!selectedGuild) return;
+      await apiFetch(`/api/guilds/${selectedGuild.id}/music/resume`, { method: 'POST' });
+      showToast('Müzik devam ettirildi!');
+    }
+
+    function selectGuild(guildId) {
+      selectedGuild = guilds.find(g => g.id === guildId) || null;
+      if (selectedGuild) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('guild', selectedGuild.id);
+        window.history.replaceState({}, '', `/music?${params.toString()}`);
+        loadMusicData().then(render);
+      }
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="app-layout">
+          <div class="main-content">
+            <header class="header">
+              <div class="header-left">
+                <h1 class="header-title">Müzik Yönetimi</h1>
+              </div>
+              <div class="header-right">
+                <select class="form-input" style="width:auto;min-width:200px;" onchange="selectGuild(this.value)">
+                  ${guilds.map(g => `<option value="${g.id}" ${selectedGuild?.id === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
+                </select>
+                <a href="/dashboard" class="embed-btn embed-btn-secondary" style="padding:6px 12px;font-size:var(--text-xs);">Dashboard</a>
+              </div>
+            </header>
+            <div class="page-content">
+              ${!selectedGuild ? '<div class="empty-state"><div class="empty-state-title">Sunucu seçin</div></div>' : `
+                <div class="config-card">
+                  <div class="config-card-title">Müzik Ayarları</div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">DJ Rol ID</label>
+                      <input type="text" id="djRoleId" class="form-input" value="${musicConfig?.djRoleId || ''}" placeholder="DJ rol ID'si">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Ses Seviyesi (0-100)</label>
+                      <input type="number" id="volume" class="form-input" value="${musicConfig?.volume || 80}" min="0" max="100">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Otomatik Ayrıl (saniye)</label>
+                      <input type="number" id="autoLeaveTimer" class="form-input" value="${musicConfig?.autoLeaveTimer || 300}" min="30">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-checkbox">
+                        <input type="checkbox" id="autoLeave" ${musicConfig?.autoLeave !== false ? 'checked' : ''}>
+                        <span>Otomatik ayrıl</span>
+                      </label>
+                      <label class="form-checkbox" style="margin-top:var(--spacing-sm);">
+                        <input type="checkbox" id="announceSongs" ${musicConfig?.announceSongs !== false ? 'checked' : ''}>
+                        <span>Şarkı bildirimi</span>
+                      </label>
+                    </div>
+                  </div>
+                  <button class="control-btn control-btn-primary" onclick="saveConfig()">Kaydet</button>
+                </div>
+
+                <div class="search-bar">
+                  <input type="text" id="searchInput" class="form-input" placeholder="Şarkı adı veya URL girin..." onkeypress="if(event.key==='Enter')playSong()">
+                  <button class="control-btn control-btn-primary" onclick="playSong()">Oynat</button>
+                </div>
+
+                <div class="player-controls">
+                  <button class="control-btn control-btn-primary" onclick="resumeMusic()">Devam Et</button>
+                  <button class="control-btn control-btn-secondary" onclick="pauseMusic()">Duraklat</button>
+                  <button class="control-btn control-btn-secondary" onclick="skipMusic()">Atla</button>
+                  <button class="control-btn control-btn-danger" onclick="stopMusic()">Durdur</button>
+                </div>
+
+                <div class="config-card">
+                  <div class="config-card-title">Kuyruk (${queue.length})</div>
+                  ${queue.length === 0 ? '<div class="empty-state" style="padding:var(--spacing-xl);"><div class="empty-state-title" style="font-size:var(--text-sm);">Kuyruk boş</div></div>' : `
+                    <div class="queue-list">
+                      ${queue.map((item, i) => `
+                        <div class="queue-item">
+                          <div style="font-size:var(--text-sm);color:var(--text-muted);width:24px;">${i + 1}</div>
+                          <div style="flex:1;">
+                            <div class="queue-item-title">${item.title}</div>
+                            <div class="queue-item-meta">${item.duration || 'Bilinmiyor'} &middot; ${item.requestedBy}</div>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  `}
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function init() {
+      const ok = await checkAuth();
+      if (!ok) return;
+      await loadGuilds();
+      if (selectedGuild) await loadMusicData();
+      render();
+    }
+
+    init();
+  </script>
+</body>
+</html>

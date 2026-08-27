@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberBOT - Ses Kanalı Yönetimi</title>
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white'>CB</text></svg>">
+  <style>
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); margin-bottom: var(--spacing-sm); }
+    .form-input { width: 100%; padding: var(--spacing-sm) var(--spacing-md); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--text-sm); transition: border-color var(--transition-fast); }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-checkbox { display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; }
+    .form-checkbox input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+    .config-card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); padding: var(--spacing-xl); margin-bottom: var(--spacing-xl); }
+    .config-card-title { font-size: var(--text-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--spacing-lg); }
+    .channel-list { background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .channel-item { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md) var(--spacing-xl); border-bottom: 1px solid var(--surface-border); }
+    .channel-item:last-child { border-bottom: none; }
+    .channel-item-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--success-muted); display: flex; align-items: center; justify-content: center; color: var(--success); flex-shrink: 0; }
+    .channel-item-info { flex: 1; }
+    .channel-item-name { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+    .channel-item-meta { font-size: var(--text-xs); color: var(--text-muted); }
+    .control-btn { padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); border: 1px solid transparent; }
+    .control-btn-primary { background: var(--accent); color: white; }
+    .control-btn-primary:hover { background: var(--accent-hover); }
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: var(--spacing-md) var(--spacing-xl); background: var(--success); color: white; border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 500; box-shadow: var(--shadow-lg); z-index: 1000; display: none; }
+    .toast.show { display: block; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast" class="toast"></div>
+  <script>
+    let currentUser = null;
+    let guilds = [];
+    let selectedGuild = null;
+    let voiceConfig = null;
+    let channels = [];
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, { credentials: 'same-origin', ...options });
+      if (res.status === 401) { window.location.href = '/login'; return null; }
+      return res.json();
+    }
+
+    async function checkAuth() {
+      const res = await apiFetch('/api/auth/me');
+      if (!res || !res.success || !res.data) { window.location.href = '/login'; return false; }
+      currentUser = res.data;
+      return true;
+    }
+
+    async function loadGuilds() {
+      const res = await apiFetch('/api/guilds');
+      if (!res || !res.success) { guilds = []; return; }
+      guilds = res.data || [];
+      if (guilds.length > 0 && !selectedGuild) {
+        const params = new URLSearchParams(window.location.search);
+        const guildId = params.get('guild');
+        selectedGuild = guilds.find(g => g.id === guildId) || guilds[0];
+      }
+    }
+
+    async function loadVoiceData() {
+      if (!selectedGuild) return;
+      const [configRes, channelsRes] = await Promise.all([
+        apiFetch(`/api/guilds/${selectedGuild.id}/voice/config`),
+        apiFetch(`/api/guilds/${selectedGuild.id}/voice/channels`),
+      ]);
+      if (configRes?.success) voiceConfig = configRes.data;
+      if (channelsRes?.success) channels = channelsRes.data || [];
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function saveConfig() {
+      if (!selectedGuild) return;
+      const body = {
+        triggerChannelId: document.getElementById('triggerChannelId').value || null,
+        categoryChannelId: document.getElementById('categoryChannelId').value || null,
+        channelPrefix: document.getElementById('channelPrefix').value || 'ODA',
+        maxUsers: parseInt(document.getElementById('maxUsers').value) || 10,
+        autoDelete: document.getElementById('autoDelete').checked,
+      };
+      const res = await apiFetch(`/api/guilds/${selectedGuild.id}/voice/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res?.success) {
+        voiceConfig = res.data;
+        showToast('Ayarlar kaydedildi!');
+      }
+    }
+
+    function selectGuild(guildId) {
+      selectedGuild = guilds.find(g => g.id === guildId) || null;
+      if (selectedGuild) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('guild', selectedGuild.id);
+        window.history.replaceState({}, '', `/voice?${params.toString()}`);
+        loadVoiceData().then(render);
+      }
+    }
+
+    function formatTimeAgo(dateStr) {
+      const now = Date.now();
+      const then = new Date(dateStr).getTime();
+      const diff = Math.floor((now - then) / 1000);
+      if (diff < 60) return 'az önce';
+      if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} saat önce`;
+      return `${Math.floor(diff / 86400)} gün önce`;
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="app-layout">
+          <div class="main-content">
+            <header class="header">
+              <div class="header-left">
+                <h1 class="header-title">Ses Kanalı Yönetimi</h1>
+              </div>
+              <div class="header-right">
+                <select class="form-input" style="width:auto;min-width:200px;" onchange="selectGuild(this.value)">
+                  ${guilds.map(g => `<option value="${g.id}" ${selectedGuild?.id === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
+                </select>
+                <a href="/dashboard" class="embed-btn embed-btn-secondary" style="padding:6px 12px;font-size:var(--text-xs);">Dashboard</a>
+              </div>
+            </header>
+            <div class="page-content">
+              ${!selectedGuild ? '<div class="empty-state"><div class="empty-state-title">Sunucu seçin</div></div>' : `
+                <div class="config-card">
+                  <div class="config-card-title">Ses Kanalı Ayarları</div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Tetikleyici Kanal ID</label>
+                      <input type="text" id="triggerChannelId" class="form-input" value="${voiceConfig?.triggerChannelId || ''}" placeholder="Tetikleme kanal ID'si">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Kategori Kanal ID</label>
+                      <input type="text" id="categoryChannelId" class="form-input" value="${voiceConfig?.categoryChannelId || ''}" placeholder="Kategori kanal ID'si">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Kanal Ön İsimi</label>
+                      <input type="text" id="channelPrefix" class="form-input" value="${voiceConfig?.channelPrefix || 'ODA'}" placeholder="ODA">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Maksimum Kullanıcı</label>
+                      <input type="number" id="maxUsers" class="form-input" value="${voiceConfig?.maxUsers || 10}" min="1" max="99">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-checkbox">
+                      <input type="checkbox" id="autoDelete" ${voiceConfig?.autoDelete !== false ? 'checked' : ''}>
+                      <span>Otomatik sil</span>
+                    </label>
+                  </div>
+                  <button class="control-btn control-btn-primary" onclick="saveConfig()">Kaydet</button>
+                </div>
+
+                <div class="config-card">
+                  <div class="config-card-title">Aktif Geçici Kanallar (${channels.length})</div>
+                  ${channels.length === 0 ? '<div class="empty-state" style="padding:var(--spacing-xl);"><div class="empty-state-title" style="font-size:var(--text-sm);">Aktif kanal yok</div></div>' : `
+                    <div class="channel-list">
+                      ${channels.map(ch => `
+                        <div class="channel-item">
+                          <div class="channel-item-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                          </div>
+                          <div class="channel-item-info">
+                            <div class="channel-item-name">${ch.channelName}</div>
+                            <div class="channel-item-meta">Sahip: ${ch.ownerId} &middot; ${formatTimeAgo(ch.createdAt)}</div>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  `}
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function init() {
+      const ok = await checkAuth();
+      if (!ok) return;
+      await loadGuilds();
+      if (selectedGuild) await loadVoiceData();
+      render();
+    }
+
+    init();
+  </script>
+</body>
+</html>

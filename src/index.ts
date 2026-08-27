@@ -11,6 +11,7 @@ import {
   loadContextMenus,
 } from './handlers/index.js';
 import { connectDatabase, disconnectDatabase } from './services/database/index.js';
+import { MusicService } from './services/music/MusicService.js';
 import { Logger } from './utils/logger.js';
 import { main } from './config/main.js';
 import { CommandRegistry } from './structures/CommandRegistry.js';
@@ -36,6 +37,9 @@ async function bootstrap(): Promise<void> {
 
     log.info('Discord istemcisi oluşturuluyor...');
     const client = createClient();
+
+    log.info('MusicService başlatılıyor...');
+    MusicService.getInstance(client);
 
     log.info('Command Registry oluşturuluyor...');
     const registry = new CommandRegistry(main.token, main.clientId);

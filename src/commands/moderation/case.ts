@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { CaseService } from '../../services/moderation/CaseService.js';
 import { EvidenceService } from '../../services/moderation/EvidenceService.js';
@@ -28,14 +28,19 @@ export default {
 
     const caseNumber = interaction.options.getInteger('caseid', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const caseRecord = await CaseService.getByNumber(guild.id, caseNumber);
 
     if (!caseRecord) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', `Case #${caseNumber} bulunamadı.`)],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', `Case #${caseNumber} bulunamadı.`)],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -96,6 +101,6 @@ export default {
       });
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

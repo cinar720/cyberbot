@@ -23,7 +23,9 @@ export default {
     .setDescription('Komutları yeniden yükler ve kaydeder.'),
 
   async execute({ interaction, client }) {
-    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    let deferred = false;
+
+    try { await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }); deferred = true; } catch { /* interaction already acknowledged */ }
 
     try {
       const registry = new CommandRegistry(main.token, main.clientId);
@@ -38,13 +40,15 @@ export default {
         .setDefaultFooter()
         .setTimestampNow();
 
-      await interaction.editReply({ embeds: [embed] });
+      await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       log.info('Komutlar yeniden yüklendi.');
     } catch (error) {
       log.error('Yeniden yükleme hatası:', error);
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', `Yeniden yükleme başarısız: ${error}`)],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', `Yeniden yükleme başarısız: ${error}`)],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

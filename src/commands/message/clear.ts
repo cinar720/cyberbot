@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
 
@@ -27,13 +27,18 @@ export default {
 
     const amount = interaction.options.getInteger('amount', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const channel = interaction.channel;
     if (!channel || !('messages' in channel)) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Bu komut sadece metin kanallarında kullanılabilir.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Bu komut sadece metin kanallarında kullanılabilir.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -54,11 +59,13 @@ export default {
         .setDefaultFooter()
         .setTimestampNow();
 
-      await interaction.editReply({ embeds: [embed] });
+      await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     } catch (error) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Mesajlar silinirken bir hata oluştu.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Mesajlar silinirken bir hata oluştu.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

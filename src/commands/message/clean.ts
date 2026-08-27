@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, type Message, type TextChannel } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, type Message, type TextChannel, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { emojis } from '../../config/emojis.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -36,14 +36,19 @@ export default {
     const amount = interaction.options.getInteger('amount', true);
     const targetUser = interaction.options.getUser('user');
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     try {
       const channel = interaction.channel;
       if (!channel || !channel.isTextBased() || !('messages' in channel)) {
-        await interaction.editReply({
+        await (deferred ? interaction.editReply({
           embeds: [CyberEmbed.error('Hata', 'Bu komut sadece metin kanallarında kullanılabilir.')],
-        });
+        }) : interaction.followUp({ ...{
+          embeds: [CyberEmbed.error('Hata', 'Bu komut sadece metin kanallarında kullanılabilir.')],
+        }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
         return;
       }
 
@@ -82,11 +87,13 @@ export default {
 
       embed.setDefaultFooter().setTimestampNow();
 
-      await interaction.editReply({ embeds: [embed] });
+      await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     } catch (error) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Mesajlar silinirken bir hata oluştu.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Mesajlar silinirken bir hata oluştu.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

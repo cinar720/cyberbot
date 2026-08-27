@@ -126,6 +126,10 @@ export default {
 
         try {
           log.info(`/${interaction.commandName} | Kullanıcı: ${interaction.user.tag} | Sunucu: ${interaction.guild?.name || 'DM'}`);
+          if (interaction.replied || interaction.deferred) {
+            log.warn(`/${interaction.commandName} interaction zaten onaylanmış, atlanıyor.`);
+            return;
+          }
           await command.execute({
             interaction,
             member,

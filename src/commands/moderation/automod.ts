@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { getPrisma } from '../../services/database/index.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -22,7 +22,10 @@ export default {
   async execute({ interaction, guild }: CommandContext) {
     if (!guild) return;
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const db = getPrisma();
 
@@ -33,9 +36,11 @@ export default {
     ]);
 
     if (!guildData) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Sunucu verisi bulunamadı.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Sunucu verisi bulunamadı.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -66,6 +71,6 @@ export default {
       embed.addFields({ name: 'Kurallar', value: rulesList.slice(0, 1024) });
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

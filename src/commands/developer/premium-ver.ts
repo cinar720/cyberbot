@@ -33,15 +33,20 @@ export default {
 
     const targetUser = interaction.options.getUser('kullanici', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     try {
       const existing = await PremiumService.getPremium(targetUser.id);
 
       if (existing && existing.active && existing.expiresAt === null) {
-        await interaction.editReply({
+        await (deferred ? interaction.editReply({
           embeds: [CyberEmbed.warning('Zaten Premium', `Bu kullanıcı zaten kalıcı premium sahibi.\nPremium ID: \`${existing.id}\``)],
-        });
+        }) : interaction.followUp({ ...{
+          embeds: [CyberEmbed.warning('Zaten Premium', `Bu kullanıcı zaten kalıcı premium sahibi.\nPremium ID: \`${existing.id}\``)],
+        }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
         return;
       }
 
@@ -57,11 +62,13 @@ export default {
         .setDefaultFooter()
         .setTimestampNow();
 
-      await interaction.editReply({ embeds: [embed] });
+      await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     } catch (error) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Premium verilirken bir hata oluştu.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Premium verilirken bir hata oluştu.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

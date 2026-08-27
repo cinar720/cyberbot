@@ -45,7 +45,10 @@ export default {
       return;
     }
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     // DB'ye kaydet
     await getOrCreateGuild(guild);
@@ -68,9 +71,11 @@ export default {
     );
 
     if (!result.success) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', result.error || 'İşlem başarısız.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', result.error || 'İşlem başarısız.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -86,6 +91,6 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

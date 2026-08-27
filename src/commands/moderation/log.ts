@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { LogService } from '../../services/moderation/LogService.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -35,7 +35,10 @@ export default {
     const user = interaction.options.getUser('user') ?? undefined;
     const limit = interaction.options.getInteger('limit') ?? 10;
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const logs = await LogService.getLogs(guild.id, {
       type,
@@ -44,9 +47,11 @@ export default {
     });
 
     if (logs.length === 0) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.warning('Bulunamadı', 'Filtrelere uygun log bulunamadı.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.warning('Bulunamadı', 'Filtrelere uygun log bulunamadı.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -76,6 +81,6 @@ export default {
       .setFooter({ text: `Toplam: ${logs.length} log` })
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

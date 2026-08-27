@@ -97,7 +97,10 @@ export default {
 
     const targetUser = interaction.options.getUser('user', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const cases = await CaseService.getAllByUser(guild.id, targetUser.id);
 
@@ -106,7 +109,7 @@ export default {
       container.addTextDisplayComponents(
         new TextDisplayBuilder().setContent(`# Bulunamadı\n\n${targetUser.tag} kullanıcısına ait case bulunamadı.`),
       );
-      await interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
+      await (deferred ? interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] }) : interaction.followUp({ ...{ components: [container], flags: [MessageFlags.IsComponentsV2] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -127,7 +130,7 @@ export default {
       interaction.user.id,
     );
 
-    await interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] });
+    await (deferred ? interaction.editReply({ components: [container], flags: [MessageFlags.IsComponentsV2] }) : interaction.followUp({ ...{ components: [container], flags: [MessageFlags.IsComponentsV2] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;
 

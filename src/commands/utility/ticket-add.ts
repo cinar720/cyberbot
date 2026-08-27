@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { getPrisma } from '../../services/database/index.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -27,7 +27,10 @@ export default {
     const db = getPrisma();
     const targetUser = interaction.options.getUser('kullanici', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const ticket = await db.ticket.findFirst({
       where: {
@@ -38,17 +41,21 @@ export default {
     });
 
     if (!ticket) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Bu kanal aktif bir destek talebi değil.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Bu kanal aktif bir destek talebi değil.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
     const channel = interaction.channel;
     if (!channel || !('permissionOverwrites' in channel)) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Kanal bulunamadı.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Kanal bulunamadı.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -69,6 +76,6 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { AppealService } from '../../services/moderation/AppealService.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -30,20 +30,27 @@ export default {
     const appealId = interaction.options.getString('appealid', true);
     const response = interaction.options.getString('response', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const appeal = await AppealService.getById(appealId);
     if (!appeal) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'İtiraz bulunamadı.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'İtiraz bulunamadı.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
     if (appeal.status !== 'PENDING') {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.warning('Uyarı', 'Bu itiraz zaten işlenmiş.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.warning('Uyarı', 'Bu itiraz zaten işlenmiş.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -59,7 +66,7 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
 
     const user = await guild.members.fetch(appeal.userId).catch(() => null);
     if (user) {

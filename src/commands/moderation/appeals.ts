@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { AppealService } from '../../services/moderation/AppealService.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -20,14 +20,19 @@ export default {
   async execute({ interaction, guild }: CommandContext) {
     if (!guild) return;
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const appeals = await AppealService.getPending(guild.id);
 
     if (appeals.length === 0) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.info('İtirazlar', 'Bekleyen itiraz bulunmamaktadır.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.info('İtirazlar', 'Bekleyen itiraz bulunmamaktadır.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -48,6 +53,6 @@ export default {
       });
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

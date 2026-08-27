@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { emojis } from '../../config/emojis.js';
 import { colors } from '../../config/colors.js';
@@ -23,11 +23,9 @@ export default {
     ),
 
   async execute({ interaction }: CommandContext) {
-    try {
-      await interaction.deferReply();
-    } catch {
-      return;
-    }
+    let deferred = false;
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     try {
       const isOwner = main.ownerId && interaction.user.id === main.ownerId;
@@ -38,9 +36,11 @@ export default {
       const result = await PremiumService.getPremiumSafe(targetUser.id);
 
       if (result.status === 'error') {
-        await interaction.editReply({
+        await (deferred ? interaction.editReply({
           embeds: [CyberEmbed.error('Hata', 'Premium bilgisi şu anda kontrol edilemiyor. Lütfen daha sonra tekrar deneyin.')],
-        });
+        }) : interaction.followUp({ ...{
+          embeds: [CyberEmbed.error('Hata', 'Premium bilgisi şu anda kontrol edilemiyor. Lütfen daha sonra tekrar deneyin.')],
+        }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
         return;
       }
 
@@ -55,7 +55,7 @@ export default {
           .setDefaultFooter()
           .setTimestampNow();
 
-        await interaction.editReply({ embeds: [embed] });
+        await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
         return;
       }
 
@@ -98,11 +98,13 @@ export default {
         { name: 'Premium ID', value: `\`${premium.id}\``, inline: true },
       );
 
-      await interaction.editReply({ embeds: [embed] });
+      await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     } catch (error) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Premium durumu kontrol edilirken bir hata oluştu.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Premium durumu kontrol edilirken bir hata oluştu.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

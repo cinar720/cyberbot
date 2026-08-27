@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { AppealService } from '../../services/moderation/AppealService.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -31,13 +31,18 @@ export default {
 
     const appealId = interaction.options.getString('appealid', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const appeal = await AppealService.getById(appealId);
     if (!appeal) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'İtiraz bulunamadı.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'İtiraz bulunamadı.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -69,6 +74,6 @@ export default {
       embed.addFields({ name: 'İncelenme Tarihi', value: `<t:${Math.floor(appeal.reviewedAt.getTime() / 1000)}:F>`, inline: true });
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

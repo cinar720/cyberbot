@@ -37,7 +37,10 @@ export default {
     const category = interaction.options.getString('kategori') || 'Genel';
     const db = getPrisma();
 
-    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    let deferred = false;
+
+
+    try { await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const existingTicket = await db.ticket.findFirst({
       where: {
@@ -48,14 +51,21 @@ export default {
     });
 
     if (existingTicket) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [
           CyberEmbed.warning(
             'Açık Destek Talebiniz Var',
             `Zaten açık bir destek talebiniz bulunuyor: <#${existingTicket.channelId}>`,
           ),
         ],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [
+          CyberEmbed.warning(
+            'Açık Destek Talebiniz Var',
+            `Zaten açık bir destek talebiniz bulunuyor: <#${existingTicket.channelId}>`,
+          ),
+        ],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -114,7 +124,7 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
 
     const welcomeEmbed = CyberEmbed.info('Destek Talebine Hoş Geldiniz')
       .setDescription(

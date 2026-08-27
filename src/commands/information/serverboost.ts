@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import type { SlashCommand } from '../../types/command.js';
 
@@ -18,7 +18,10 @@ export default {
   async execute({ interaction, guild }) {
     if (!guild) return;
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const boostCount = guild.premiumSubscriptionCount ?? 0;
     const boostLevel = guild.premiumTier;
@@ -49,6 +52,6 @@ export default {
 
     embed.setDefaultFooter().setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

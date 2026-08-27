@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { LogService } from '../../services/moderation/LogService.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
@@ -27,14 +27,19 @@ export default {
 
     const type = interaction.options.getString('type') ?? undefined;
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const deletedCount = await LogService.clearLogs(guild.id, type);
 
     if (deletedCount === 0) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.warning('Temizlenemedi', 'Silinecek log bulunamadı.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.warning('Temizlenemedi', 'Silinecek log bulunamadı.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -43,6 +48,6 @@ export default {
       `${deletedCount} moderasyon logu başarıyla silindi.${type ? ` (Tür: \`${type}\`)` : ''}`,
     );
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

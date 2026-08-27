@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import type { SlashCommand } from '../../types/command.js';
 
@@ -22,13 +22,16 @@ export default {
     const input = interaction.options.getString('code', true);
     const code = input.replace('https://discord.gg/', '').replace('http://discord.gg/', '').replace('https://discord.com/invite/', '').replace('http://discord.com/invite/', '');
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     let invite;
     try {
       invite = await client.fetchInvite(code);
     } catch {
-      await interaction.editReply({ embeds: [CyberEmbed.error('Hata', 'Davet bulunamadı. Lütfen geçerli bir davet kodu girin.')] });
+      await (deferred ? interaction.editReply({ embeds: [CyberEmbed.error('Hata', 'Davet bulunamadı. Lütfen geçerli bir davet kodu girin.')] }) : interaction.followUp({ ...{ embeds: [CyberEmbed.error('Hata', 'Davet bulunamadı. Lütfen geçerli bir davet kodu girin.')] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -80,6 +83,6 @@ export default {
       );
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

@@ -31,21 +31,28 @@ export default {
     const caseNumber = interaction.options.getInteger('caseid', true);
     const reason = interaction.options.getString('reason', true);
 
-    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    let deferred = false;
+
+
+    try { await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const caseData = await CaseService.getByNumber(guild.id, caseNumber);
     if (!caseData) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', `Case #${caseNumber} bulunamadı.`)],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', `Case #${caseNumber} bulunamadı.`)],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
     const existingAppeal = await AppealService.hasPendingAppeal(caseData.id);
     if (existingAppeal) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.warning('Uyarı', `Case #${caseNumber} için zaten bekleyen bir itiraz mevcut.`)],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.warning('Uyarı', `Case #${caseNumber} için zaten bekleyen bir itiraz mevcut.`)],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -64,7 +71,7 @@ export default {
       .setDefaultFooter()
       .setTimestampNow();
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
 
     const modLogId = channels.logs.moderation;
     if (!modLogId) return;

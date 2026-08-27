@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, TextChannel } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, TextChannel, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
 
@@ -28,7 +28,10 @@ export default {
     const channel = interaction.options.getChannel('channel', true) as TextChannel;
     const message = interaction.options.getString('message', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     try {
       await channel.send(message);
@@ -41,11 +44,13 @@ export default {
         .setDefaultFooter()
         .setTimestampNow();
 
-      await interaction.editReply({ embeds: [successEmbed] });
+      await (deferred ? interaction.editReply({ embeds: [successEmbed] }) : interaction.followUp({ ...{ embeds: [successEmbed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     } catch (error) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Mesaj gönderilirken bir hata oluştu.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Mesaj gönderilirken bir hata oluştu.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

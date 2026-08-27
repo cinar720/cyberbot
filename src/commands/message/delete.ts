@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
 
@@ -34,22 +34,29 @@ export default {
     const channel = interaction.options.getChannel('channel', true);
     const messageId = interaction.options.getString('messageid', true);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     try {
       const targetChannel = await guild.channels.fetch(channel.id);
       if (!targetChannel || !targetChannel.isTextBased() || !('messages' in targetChannel)) {
-        await interaction.editReply({
+        await (deferred ? interaction.editReply({
           embeds: [CyberEmbed.error('Hata', 'Bu kanalda mesaj silme işlemi yapılamaz.')],
-        });
+        }) : interaction.followUp({ ...{
+          embeds: [CyberEmbed.error('Hata', 'Bu kanalda mesaj silme işlemi yapılamaz.')],
+        }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
         return;
       }
 
       const message = await targetChannel.messages.fetch(messageId);
       if (!message) {
-        await interaction.editReply({
+        await (deferred ? interaction.editReply({
           embeds: [CyberEmbed.error('Hata', 'Mesaj bulunamadı.')],
-        });
+        }) : interaction.followUp({ ...{
+          embeds: [CyberEmbed.error('Hata', 'Mesaj bulunamadı.')],
+        }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
         return;
       }
 
@@ -63,11 +70,13 @@ export default {
         .setDefaultFooter()
         .setTimestampNow();
 
-      await interaction.editReply({ embeds: [embed] });
+      await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     } catch (error) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', 'Mesaj bulunamadı veya botun yetkisi yeterli değil.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', 'Mesaj bulunamadı veya botun yetkisi yeterli değil.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
     }
   },
 } satisfies SlashCommand;

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { PolicyService } from '../../services/policy/PolicyService.js';
 import { CaseService } from '../../services/moderation/CaseService.js';
@@ -38,7 +38,10 @@ export default {
 
     const botMember = await guild.members.fetch(interaction.client.user.id);
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     // DB'ye kaydet
     await getOrCreateGuild(guild);
@@ -57,9 +60,11 @@ export default {
     );
 
     if (!result.success) {
-      await interaction.editReply({
+      await (deferred ? interaction.editReply({
         embeds: [CyberEmbed.error('Hata', result.error || 'İşlem başarısız.')],
-      });
+      }) : interaction.followUp({ ...{
+        embeds: [CyberEmbed.error('Hata', result.error || 'İşlem başarısız.')],
+      }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
       return;
     }
 
@@ -83,6 +88,6 @@ export default {
       });
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

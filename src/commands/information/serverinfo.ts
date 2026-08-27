@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, Guild } from 'discord.js';
+import { SlashCommandBuilder, Guild, MessageFlags } from 'discord.js';
 import { CyberEmbed } from '../../utils/embed.js';
 import { formatNumber } from '../../utils/helpers.js';
 import type { SlashCommand } from '../../types/command.js';
@@ -19,7 +19,10 @@ export default {
   async execute({ interaction, guild }) {
     if (!guild) return;
 
-    await interaction.deferReply();
+    let deferred = false;
+
+
+    try { await interaction.deferReply(); deferred = true; } catch { /* interaction already acknowledged */ }
 
     const g = guild as Guild;
 
@@ -66,6 +69,6 @@ export default {
       embed.setImage(g.iconURL()!);
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await (deferred ? interaction.editReply({ embeds: [embed] }) : interaction.followUp({ ...{ embeds: [embed] }, flags: [MessageFlags.Ephemeral] }).catch(() => null));
   },
 } satisfies SlashCommand;

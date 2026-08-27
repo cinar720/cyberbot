@@ -50,6 +50,12 @@ model Guild {
   configBackups ConfigBackup[]
   guildChannels GuildChannel[]
   guildRoles    GuildRole[]
+  voiceConfig   VoiceChannelConfig?
+  tempChannels  TempVoiceChannel[]
+  levelConfig   LevelConfig?
+  userLevels    UserLevel[]
+  musicConfig   MusicConfig?
+  musicQueue    MusicQueue[]
 
   @@map("guilds")
 }
@@ -698,6 +704,119 @@ model GuildRole {
 // ==========================================
 // PREMIUM MODEL
 // ==========================================
+
+// ==========================================
+// VOICE CHANNEL MANAGEMENT
+// ==========================================
+
+model VoiceChannelConfig {
+  id                  String  @id @default(cuid())
+  guildId             String  @unique
+  triggerChannelId    String?
+  categoryChannelId   String?
+  channelPrefix       String  @default("ODA")
+  maxUsers            Int     @default(10)
+  autoDelete          Boolean @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  guild       Guild            @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  tempChannels TempVoiceChannel[]
+
+  @@map("voice_channel_configs")
+}
+
+model TempVoiceChannel {
+  id            String   @id @default(cuid())
+  guildId       String
+  channelId     String   @unique
+  ownerId       String
+  channelName   String
+  createdAt     DateTime @default(now())
+
+  guild         Guild             @relation(fields: [guildId], references: [guildId], onDelete: Cascade, map: "temp_voice_channels_guildId_fkey")
+  config        VoiceChannelConfig @relation(fields: [guildId], references: [guildId], onDelete: Cascade, map: "temp_voice_channels_configId_fkey")
+
+  @@index([guildId])
+  @@map("temp_voice_channels")
+}
+
+// ==========================================
+// XP & LEVEL SYSTEM
+// ==========================================
+
+model LevelConfig {
+  id              String  @id @default(cuid())
+  guildId         String  @unique
+  xpPerMessage    Int     @default(15)
+  xpCooldown      Int     @default(60)
+  levelUpChannelId String?
+  levelUpMessage   String  @default("Tebrikler {user}, **Level {level}** oldun!")
+  roleRewards     Json    @default("[]")
+  enabled         Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("level_configs")
+}
+
+model UserLevel {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  totalXp   Int      @default(0)
+  messages  Int      @default(0)
+  lastXpAt  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([guildId, level])
+  @@map("user_levels")
+}
+
+// ==========================================
+// MUSIC SYSTEM
+// ==========================================
+
+model MusicConfig {
+  id              String  @id @default(cuid())
+  guildId         String  @unique
+  enabled         Boolean @default(true)
+  djRoleId        String?
+  volume          Int     @default(80)
+  autoLeave       Boolean @default(true)
+  autoLeaveTimer  Int     @default(300)
+  announceSongs   Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@map("music_configs")
+}
+
+model MusicQueue {
+  id        String   @id @default(cuid())
+  guildId   String
+  title     String
+  url       String
+  duration  String?
+  requestedBy String
+  position  Int
+  createdAt DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@index([guildId, position])
+  @@map("music_queue")
+}
 
 model Premium {
   id          String    @id @default(cuid())

@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Guild {
+  id              String    @id @default(cuid())
+  guildId         String    @unique
+  name            String
+  memberCount     Int       @default(0)
+  owner_id        String?
+  enabled         Boolean   @default(true)
+  leftAt          DateTime?
+
+  // Guild Configuration
+  prefix          String    @default("!")
+  language        String    @default("tr")
+  modEnabled      Boolean   @default(false)
+  logChannelId    String?
+  muteRoleId      String?
+  jailRoleId      String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  cases           ModerationCase[]
+
+  @@map("guilds")
+}
+
+model ModerationCase {
+  id              String    @id @default(cuid())
+  guildId         String
+  caseNumber      Int
+  action          String
+  moderatorId     String
+  targetId        String
+  reason          String    @default("Belirtilmedi")
+  duration        Int?
+  expired         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  guild           Guild     @relation(fields: [guildId], references: [guildId])
+
+  @@unique([guildId, caseNumber])
+  @@map("moderation_cases")
+}
+
+model Suggestion {
+  id                    String    @id @default(cuid())
+  guildId               String
+  suggestionNumber      Int
+  userId                String
+  title                 String
+  content               String
+  status                String    @default("pending")
+  messageId             String?
+  channelId             String?
+  approvalMessageId     String?
+  approvalChannelId     String?
+  publicationMessageId  String?
+  publicationChannelId  String?
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  rejectionReason       String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([guildId, suggestionNumber])
+  @@map("suggestions")
+}
+
+model Ticket {
+  id              String    @id @default(cuid())
+  guildId         String
+  ticketNumber    Int
+  userId          String
+  category        String
+  channelId       String?
+  messageId       String?
+  status          String    @default("open")
+  claimedBy       String?
+  closedBy        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  closedAt        DateTime?
+  transcript      String?
+
+  @@unique([guildId, ticketNumber])
+  @@map("tickets")
+}

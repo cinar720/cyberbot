@@ -36,11 +36,16 @@ export default {
     let channel: TextChannel | null = null;
 
     if (config.levelUpChannelId) {
-      channel = message.guild.channels.cache.get(config.levelUpChannelId) as TextChannel | undefined ?? null;
+      const ch = message.guild.channels.cache.get(config.levelUpChannelId);
+      if (ch && ch.isTextBased()) {
+        channel = ch as TextChannel;
+      }
     }
 
     if (!channel) {
-      channel = message.channel as TextChannel;
+      if (message.channel.isTextBased()) {
+        channel = message.channel as TextChannel;
+      }
     }
 
     if (!channel) return;
@@ -56,7 +61,7 @@ export default {
       .setTimestampNow();
 
     try {
-      if (channel.permissionsFor(message.guild.members.me!)?.has(PermissionFlagsBits.SendMessages)) {
+      if (message.guild.members.me && channel.permissionsFor(message.guild.members.me).has(PermissionFlagsBits.SendMessages)) {
         await channel.send({ embeds: [embed] });
       }
     } catch (error) {

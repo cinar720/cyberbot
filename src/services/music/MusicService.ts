@@ -109,6 +109,10 @@ export class MusicService {
     return this.queues.get(guild.id);
   }
 
+  getQueueByGuildId(guildId: string): GuildQueue | undefined {
+    return this.queues.get(guildId);
+  }
+
   nowPlaying(guild: Guild): Track | null {
     const queue = this.queues.get(guild.id);
     if (queue) {

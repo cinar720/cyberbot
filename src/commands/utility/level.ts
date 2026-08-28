@@ -12,9 +12,10 @@ import { LevelService } from '../../services/level/LevelService.js';
 import type { SlashCommand, CommandContext } from '../../types/command.js';
 
 function buildProgressBar(current: number, max: number, length: number = 20): string {
+  if (max <= 0) return '`' + '░'.repeat(length) + '`';
   const filled = Math.round((current / max) * length);
   const empty = length - filled;
-  return '`' + '█'.repeat(filled) + '░'.repeat(empty) + '`';
+  return '`' + '█'.repeat(Math.max(0, filled)) + '░'.repeat(Math.max(0, empty)) + '`';
 }
 
 export default {

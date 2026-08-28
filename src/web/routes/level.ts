@@ -101,7 +101,7 @@ router.get('/:guildId/level/leaderboard', authMiddleware, asyncHandler(async (re
   const prisma = getPrisma();
   const leaderboard = await prisma.userLevel.findMany({
     where: { guildId },
-    orderBy: { level: 'desc' },
+    orderBy: { totalXp: 'desc' },
     take: 20,
   });
 

@@ -101,14 +101,14 @@ async function handleLeave(
 
       log.info(`Geçici kanal silindi: ${channel.name} (${guild.name})`);
     }
-  } else if (tempChannel.ownerId === channel.members.first()?.id) {
+  } else if (!channel.members.has(tempChannel.ownerId)) {
     const newOwner = channel.members.first();
     if (newOwner) {
       await db.tempVoiceChannel.update({
         where: { channelId: channel.id },
         data: { ownerId: newOwner.id },
       });
-      log.info(`Kanal sahipliği devredildi: ${newOwner.user.tag} -> ${channel.name}`);
+      log.info(`Kanal sahipligi devredildi: ${newOwner.user.tag} -> ${channel.name}`);
     }
   }
 }

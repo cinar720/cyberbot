@@ -147,8 +147,7 @@ async function replyEmbed(
   if (deferred) {
     await interaction.editReply({ embeds: [embed] }).catch(() => null);
   } else {
-    const flags = ephemeral ? [MessageFlags.Ephemeral] as never[] : [];
-    await interaction.reply({ embeds: [embed], flags }).catch(() => null);
+    await interaction.reply({ embeds: [embed], flags: ephemeral ? [MessageFlags.Ephemeral] : [] }).catch(() => null);
   }
 }
 
@@ -199,6 +198,7 @@ async function findTempChannel(
   guild: NonNullable<CommandContext['guild']>,
   member: NonNullable<CommandContext['member']>,
   db: ReturnType<typeof getPrisma>,
+  deferred: boolean,
 ) {
   const tempChannel = await db.tempVoiceChannel.findFirst({
     where: {
@@ -208,24 +208,40 @@ async function findTempChannel(
   });
 
   if (!tempChannel) {
-    await interaction
-      .reply({
-        embeds: [CyberEmbed.error('Hata', 'Sizin icin olusturulmus gecici bir kanal bulunamadi.')],
-        flags: [MessageFlags.Ephemeral],
-      })
-      .catch(() => null);
+    if (deferred) {
+      await interaction
+        .editReply({
+          embeds: [CyberEmbed.error('Hata', 'Sizin icin olusturulmus gecici bir kanal bulunamadi.')],
+        })
+        .catch(() => null);
+    } else {
+      await interaction
+        .reply({
+          embeds: [CyberEmbed.error('Hata', 'Sizin icin olusturulmus gecici bir kanal bulunamadi.')],
+          flags: [MessageFlags.Ephemeral],
+        })
+        .catch(() => null);
+    }
     return null;
   }
 
   const discordChannel = await guild.channels.fetch(tempChannel.channelId).catch(() => null);
   if (!discordChannel) {
     await db.tempVoiceChannel.delete({ where: { channelId: tempChannel.channelId } }).catch(() => null);
-    await interaction
-      .reply({
-        embeds: [CyberEmbed.error('Hata', "Kanal Discord'da bulunamadi.")],
-        flags: [MessageFlags.Ephemeral],
-      })
-      .catch(() => null);
+    if (deferred) {
+      await interaction
+        .editReply({
+          embeds: [CyberEmbed.error('Hata', "Kanal Discord'da bulunamadi.")],
+        })
+        .catch(() => null);
+    } else {
+      await interaction
+        .reply({
+          embeds: [CyberEmbed.error('Hata', "Kanal Discord'da bulunamadi.")],
+          flags: [MessageFlags.Ephemeral],
+        })
+        .catch(() => null);
+    }
     return null;
   }
 
@@ -239,7 +255,7 @@ async function handleIsim(
   db: ReturnType<typeof getPrisma>,
 ) {
   const deferred = await safeDefer(interaction);
-  const data = await findTempChannel(interaction, guild, member, db);
+  const data = await findTempChannel(interaction, guild, member, db, deferred);
   if (!data) return;
 
   const newName = interaction.options.getString('isim', true);
@@ -263,7 +279,7 @@ async function handleLimit(
   db: ReturnType<typeof getPrisma>,
 ) {
   const deferred = await safeDefer(interaction);
-  const data = await findTempChannel(interaction, guild, member, db);
+  const data = await findTempChannel(interaction, guild, member, db, deferred);
   if (!data) return;
 
   const limit = interaction.options.getInteger('sayi', true);
@@ -286,7 +302,7 @@ async function handleKilit(
   db: ReturnType<typeof getPrisma>,
 ) {
   const deferred = await safeDefer(interaction);
-  const data = await findTempChannel(interaction, guild, member, db);
+  const data = await findTempChannel(interaction, guild, member, db, deferred);
   if (!data) return;
 
   const voiceCh = data.discordChannel as VoiceChannel;
@@ -305,7 +321,7 @@ async function handleKilidiAc(
   db: ReturnType<typeof getPrisma>,
 ) {
   const deferred = await safeDefer(interaction);
-  const data = await findTempChannel(interaction, guild, member, db);
+  const data = await findTempChannel(interaction, guild, member, db, deferred);
   if (!data) return;
 
   const voiceCh = data.discordChannel as VoiceChannel;
@@ -324,7 +340,7 @@ async function handleSahip(
   db: ReturnType<typeof getPrisma>,
 ) {
   const deferred = await safeDefer(interaction);
-  const data = await findTempChannel(interaction, guild, member, db);
+  const data = await findTempChannel(interaction, guild, member, db, deferred);
   if (!data) return;
 
   const targetUser = interaction.options.getUser('kullanici', true);
@@ -361,7 +377,7 @@ async function handleSil(
   db: ReturnType<typeof getPrisma>,
 ) {
   const deferred = await safeDefer(interaction);
-  const data = await findTempChannel(interaction, guild, member, db);
+  const data = await findTempChannel(interaction, guild, member, db, deferred);
   if (!data) return;
 
   await data.discordChannel.delete().catch(() => null);

@@ -2,6 +2,8 @@ export const premiumConfig = {
   commands: [
     'ticket-close',
     'ticket-transcript',
+    'ticket',
+    'ticket-add',
     'customcommand',
     'customcommand-delete',
     'customcommand-list',

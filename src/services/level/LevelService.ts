@@ -132,10 +132,11 @@ export class LevelService {
       });
 
       if (!userLevel) {
+        const initialLevel = this.calculateLevel(amount);
         userLevel = await db.userLevel.create({
-          data: { guildId, userId, xp: amount, level: 1, totalXp: amount, messages: 1 },
+          data: { guildId, userId, xp: amount, level: initialLevel, totalXp: amount, messages: 1 },
         });
-        return { leveled: false, newLevel: 1, newXp: amount };
+        return { leveled: false, newLevel: initialLevel, newXp: amount };
       }
 
       const oldLevel = userLevel.level;
@@ -157,8 +158,8 @@ export class LevelService {
 
       return { leveled, newLevel, newXp };
     } catch (error) {
-      log.error(`XP ekleme hatası: ${guildId}/${userId}`, error);
-      return { leveled: false, newLevel: 1, newXp: 0 };
+      log.error(`XP ekleme hatasi: ${guildId}/${userId}`, error);
+      return { leveled: false, newLevel: 0, newXp: 0 };
     }
   }
 
